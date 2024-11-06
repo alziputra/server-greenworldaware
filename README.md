@@ -1,12 +1,14 @@
-# Portfolio Management API
+# GreenWorldAware Management API
 
-API ini memungkinkan pengguna untuk mengelola portofolio, termasuk menambahkan, memperbarui, dan menghapus proyek terkait. Aplikasi ini menggunakan **Node.js**, **Express**, dan **Sequelize ORM** dengan **MySQL** sebagai basis data.
+Green World Aware API adalah layanan berbasis REST yang memungkinkan pengembang untuk mengakses dan mengelola data lingkungan dengan efisien. Dibangun menggunakan Express.js sebagai framework backend dan Sequelize sebagai ORM (Object-Relational Mapping), API ini menawarkan cara yang fleksibel dan kuat untuk berinteraksi dengan database
 
 ## Teknologi
 
-- Node.js
-- MySQL
-- Sequelize CLI
+- **Node.js**: Runtime JavaScript yang memberikan kinerja tinggi dan memungkinkan penanganan permintaan secara asinkron.
+- **Express.js**: Framework backend yang sederhana dan cepat, memudahkan pengelolaan permintaan dan pembuatan endpoint RESTful.
+- **MySQL**: Database relasional yang efisien untuk menyimpan dan mengelola data lingkungan dalam skala besar.
+- **Sequelize ORM**: Mempermudah interaksi dengan database MySQL melalui model-model data yang terdefinisi dengan baik dan menyederhanakan operasi SQL.
+- **Sequelize CLI**: Alat bantu untuk menjalankan migrasi, seeding, dan pengelolaan struktur database.
 
 ## Langkah-langkah Instalasi
 

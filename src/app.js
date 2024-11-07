@@ -12,6 +12,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
+// Melayani file statis di folder `public/uploads`
+app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
+console.log(path.join(__dirname, "../public/uploads"));
+
 const connectToDB = async () => {
   try {
     await sequelize.authenticate();

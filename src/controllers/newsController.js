@@ -5,8 +5,14 @@ const getAllNews = async (req, res) => {
   try {
     const allNews = await News.findAll({
       include: [
-        { model: User, required: true },
-        { model: Categories, required: true },
+        {
+          model: User,
+          required: false, // Ubah ke false untuk membuat relasi opsional
+        },
+        {
+          model: Categories,
+          required: false, // Ubah ke false untuk membuat relasi opsional
+        },
       ],
     });
     res.status(200).json({
@@ -22,12 +28,18 @@ const getAllNews = async (req, res) => {
 
 const getNewsById = async (req, res) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
+
+    // Pastikan ID adalah angka
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid news ID" });
+    }
+
     const getNews = await News.findOne({
       where: { id },
       include: [
-        { model: User, required: true },
-        { model: Categories, required: true },
+        { model: User, required: false }, // ubah ke false jika user bisa null
+        { model: Categories, required: false }, // ubah ke false jika categories bisa null
       ],
     });
 
@@ -41,7 +53,7 @@ const getNewsById = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-      message: error.message,
+      message: `Error fetching news: ${error.message}`,
     });
   }
 };

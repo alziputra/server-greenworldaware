@@ -1,7 +1,7 @@
 const express = require("express");
 
 const auth = require("../middleware/auth");
-const { getAllPetition, getPetitionById, addPetition, editPetition, deletePetition } = require("../controller/petitionsController");
+const { getAllPetition, getPetitionById, addPetition, editPetition, deletePetition } = require("../controllers/petitionsController");
 
 const route = express.Router();
 

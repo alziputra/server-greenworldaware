@@ -1,7 +1,7 @@
 const express = require("express");
 
 const auth = require("../middleware/auth");
-const { getAllLikes, addLikes, deleteLike } = require("../controller/likeController");
+const { getAllLikes, addLikes, deleteLike } = require("../controllers/likeController");
 
 const route = express.Router();
 

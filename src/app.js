@@ -1,15 +1,15 @@
 require("dotenv/config");
 const express = require("express");
 const cors = require("cors");
-const morgan = require("morgan"); // Import morgan
+const morgan = require("morgan");
+const path = require("path");
 const { sequelize } = require("./models");
-const router = require("./router");
+const router = require("./routers"); // Sesuaikan path router jika diperlukan
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-// Use morgan with a custom format to log only the HTTP method
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
 const connectToDB = async () => {

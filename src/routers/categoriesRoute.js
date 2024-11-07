@@ -1,7 +1,7 @@
 const express = require("express");
 
 const auth = require("../middleware/auth");
-const { getAllCategories, getCategoryById, addCategory, deleteCategory, editCategory } = require("../controller/categoryController");
+const { getAllCategories, getCategoryById, addCategory, deleteCategory, editCategory } = require("../controllers/categoryController");
 const route = express.Router();
 
 route.get("/", getAllCategories);

@@ -6,20 +6,14 @@ const getAllPetition = async (req, res) => {
   try {
     const allPetitions = await Petitions.findAll({
       include: [
-        {
-          model: Signatures,
-          required: true,
-        },
+        { model: Signatures, required: false },
+        { model: User, required: false },
       ],
     });
-    res.status(200).json({
-      message: "succeed",
-      data: allPetitions,
-    });
+
+    res.status(200).json({ message: "succeed", data: allPetitions });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -29,13 +23,13 @@ const getPetitionById = async (req, res) => {
     const petition = await Petitions.findOne({
       where: { id },
       include: [
-        { model: Signatures, required: true },
-        { model: User, required: true },
+        { model: Signatures, required: false },
+        { model: User, required: false },
       ],
     });
 
     if (!petition) {
-      return res.status(404).json({ message: "Petition not found" });
+      return res.status(404).json({ message: `Petition with ID ${id} not found` });
     }
 
     res.status(200).json({ message: "succeed", data: petition });

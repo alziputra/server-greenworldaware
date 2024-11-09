@@ -2,17 +2,18 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { Comments, Likes, User, Post } = require("../models");
 
+// Get all users with their likes and comments
 const getAllUser = async (req, res) => {
   try {
     const allUsers = await User.findAll({
       include: [
         {
           model: Likes,
-          require: true,
+          required: true,
         },
         {
           model: Comments,
-          require: true,
+          required: true,
         },
       ],
     });
@@ -27,168 +28,180 @@ const getAllUser = async (req, res) => {
   }
 };
 
+// Get a specific user by ID with their posts
 const getUserById = async (req, res) => {
-  const id = req.params.id;
-  const getUser = await User.findOne({ where: { id: id }, include: Post });
-
-  if (!getUser) {
-    res.status(404).json({
-      message: "user not found",
-    });
-  }
-
-  res.status(200).json({
-    message: "succeed",
-    data: getUser,
-  });
-};
-
-const getPostById = async (req, res) => {
-  const id = req.params.id;
-  const getPost = await Post.findAll({
-    where: { userId: id },
-    include: [
-      {
-        model: Likes,
-        require: true,
-      },
-      {
-        model: Comments,
-        require: true,
-      },
-      {
-        model: User,
-        require: true,
-      },
-    ],
-  });
-
-  if (!getPost) {
-    res.status(404).json({
-      message: "user not found",
-    });
-  }
-
-  res.status(200).json({
-    message: "succeed",
-    data: getPost,
-  });
-};
-
-const login = async (req, res) => {
   try {
-    const data = req.body;
-    const getUser = await User.findOne({ where: { email: data.email } });
+    const id = req.params.id;
+    const getUser = await User.findOne({ where: { id }, include: Post });
 
     if (!getUser) {
-      return res.status(404).json({
-        message: "user not found",
-      });
+      return res.status(404).json({ message: "user not found" });
     }
 
-    bcrypt
-      .compare(data.password, getUser.password)
-      .then((result) => {
-        if (result) {
-          const token = jwt.sign(
-            { id: getUser.id, firstName: getUser.firstName, lastName: getUser.lastName, email: getUser.email, image: getUser.image, role: getUser.role, points: getUser.points, iat: Math.floor(Date.now() / 3000 - 30) },
-            process.env.JWT_SECRET
-          );
-          res.status(200).json({
-            status: true,
-            message: "Login Succesful",
-            token: token,
-          });
-        } else {
-          res.status(404).json({
-            status: false,
-            message: "Wrong Password",
-          });
-        }
-      })
-      .catch((error) => {
-        res.status(500).json({
-          status: false,
-          message: "Internal server error",
-        });
-      });
-  } catch (error) {
-    res.status(500).send(error.message);
-  }
-};
-
-const register = async (req, res) => {
-  try {
-    const data = req.body;
-    const userCheck = await User.findAll({ where: { email: data.email } });
-
-    if (userCheck.length > 0) {
-      res.status(406).json({
-        message: "email has already been registered",
-      });
-      return;
-    }
-
-    let saltRounds = 10;
-
-    bcrypt.hash(data.password, saltRounds, async (err, hash) => {
-      const newUser = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        password: hash,
-        gender: data.gender,
-        role: data.role,
-      };
-      const addUser = await User.create(newUser);
-
-      res.status(201).json({
-        message: "account succesfully registered",
-        data: addUser,
-      });
+    res.status(200).json({
+      message: "succeed",
+      data: getUser,
     });
   } catch (error) {
-    res.status(400).json({
+    res.status(500).json({
       message: error.message,
     });
   }
 };
 
+// Get posts by a specific user ID with likes and comments
+const getPostById = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const getPost = await Post.findAll({
+      where: { userId: id },
+      include: [
+        {
+          model: Likes,
+          required: true,
+        },
+        {
+          model: Comments,
+          required: true,
+        },
+        {
+          model: User,
+          required: true,
+        },
+      ],
+    });
+
+    if (!getPost.length) {
+      return res.status(404).json({ message: "No posts found for this user" });
+    }
+
+    res.status(200).json({
+      message: "succeed",
+      data: getPost,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+// User login with JWT generation
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const getUser = await User.findOne({ where: { email } });
+
+    if (!getUser) {
+      return res.status(404).json({ message: "user not found" });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, getUser.password);
+    if (!passwordMatch) {
+      return res.status(403).json({ message: "Wrong password" });
+    }
+
+    const token = jwt.sign(
+      {
+        id: getUser.id,
+        firstName: getUser.firstName,
+        lastName: getUser.lastName,
+        email: getUser.email,
+        image: getUser.image,
+        role: getUser.role,
+        points: getUser.points,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    res.status(200).json({
+      status: true,
+      message: "Login successful",
+      token,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+// User registration with bcrypt password hashing
+const register = async (req, res) => {
+  try {
+    const { firstName, lastName, email, password, gender, role } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password || !gender || !role) {
+      return res.status(400).json({
+        message: "All fields are required: firstName, lastName, email, password, gender, role",
+      });
+    }
+
+    // Check if email is already registered
+    const userExists = await User.findOne({ where: { email } });
+    if (userExists) {
+      return res.status(409).json({ message: "Email has already been registered" });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await User.create({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
+      gender,
+      role,
+    });
+
+    res.status(201).json({
+      message: "Account successfully registered",
+      data: newUser,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Registration failed",
+      error: error.message,
+    });
+  }
+};
+
+// Edit a specific user
 const editUser = async (req, res) => {
   try {
     const id = req.params.id;
-    const data = req.body;
-    const user = await User.findOne({ where: { id: id } });
+    const { firstName, lastName, email, password, image, gender, role } = req.body;
 
-    let saltRounds = 10;
-    const hashPassword = await new Promise((resolve, reject) => {
-      bcrypt.hash(data.password, saltRounds, (err, hash) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(hash);
-        }
-      });
-    });
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const hashPassword = password ? await bcrypt.hash(password, 10) : user.password;
 
     const editedUser = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
+      firstName,
+      lastName,
+      email,
       password: hashPassword,
-      image: data.image,
-      gender: data.gender,
-      role: data.role,
+      image,
+      gender,
+      role,
     };
-    const edited = await user.update(editedUser, { where: { id: id } });
 
-    res.status(201).json({
-      message: "User has succesfully made a change",
-      edited,
+    const updatedUser = await user.update(editedUser);
+
+    res.status(200).json({
+      message: "User successfully updated",
+      data: updatedUser,
     });
   } catch (error) {
-    res.status(404).json({
-      message: "Internal Error",
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
     });
   }
 };

@@ -1,14 +1,18 @@
 const express = require("express");
-
-const { getAllUser, getUserById, register, login, editUser, getPostById } = require("../controllers/userController");
+const multer = require("multer");
+const { register, login, getAllUser, getUserById, editUser, getPostById } = require("../controllers/userController");
 const auth = require("../middleware/auth");
+
 const route = express.Router();
+const upload = multer(); // Configure multer for handling form-data
 
 route.get("/", getAllUser);
 route.get("/:id", getUserById);
 route.get("/:id/posts", getPostById);
-route.put("/:id", auth, editUser);
-route.post("/", register);
+
+// Use `upload.none()` to parse form-data fields only (without files) for registration
+route.post("/register", upload.none(), register);
 route.post("/login", login);
+route.put("/:id", auth, editUser);
 
 module.exports = route;

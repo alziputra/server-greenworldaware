@@ -1,5 +1,6 @@
 const { News, Categories, User } = require("../models");
 const { uploadImage } = require("../utils/cloudinaryUploadHelper");
+const cloudinary = require("cloudinary").v2;
 
 const getAllNews = async (req, res) => {
   try {
@@ -41,11 +42,14 @@ const addNews = async (req, res) => {
     const user = await User.findByPk(data.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const imagePath = req.file ? await uploadImage(req.file) : null;
+    // Upload image if provided and get URL and public_id
+    const imageUploadResult = req.file ? await uploadImage(req.file) : null;
+
     const newNews = {
       title: data.title,
       description: data.description,
-      image: imagePath,
+      image: imageUploadResult ? imageUploadResult.url : null,
+      imagePublicId: imageUploadResult ? imageUploadResult.public_id : null, // Store public_id
       userId: data.userId,
       categoryId: data.categoryId,
     };
@@ -65,11 +69,21 @@ const editNews = async (req, res) => {
 
     if (!news) return res.status(404).json({ message: `News with ID ${id} not found` });
 
-    const imagePath = req.file ? await uploadImage(req.file) : news.image;
+    // Upload new image if provided
+    let imageUploadResult;
+    if (req.file) {
+      // Delete the old image from Cloudinary if it exists
+      if (news.imagePublicId) {
+        await cloudinary.uploader.destroy(news.imagePublicId);
+      }
+      imageUploadResult = await uploadImage(req.file);
+    }
+
     const updatedNews = {
       title: data.title,
       description: data.description,
-      image: imagePath,
+      image: imageUploadResult ? imageUploadResult.url : news.image,
+      imagePublicId: imageUploadResult ? imageUploadResult.public_id : news.imagePublicId,
       userId: data.userId,
       categoryId: data.categoryId,
     };
@@ -88,6 +102,18 @@ const deleteNews = async (req, res) => {
 
     if (!news) return res.status(404).json({ message: `News with ID ${id} not found` });
 
+    // Delete image from Cloudinary if it exists
+    if (news.imagePublicId) {
+      await cloudinary.uploader.destroy(news.imagePublicId, (error, result) => {
+        if (error) {
+          console.error("Failed to delete image from Cloudinary:", error);
+        } else {
+          console.log("Image deleted from Cloudinary:", result);
+        }
+      });
+    }
+
+    // Delete news record from database
     await news.destroy();
     res.status(200).json({ message: "News successfully deleted" });
   } catch (error) {

@@ -1,7 +1,7 @@
 const path = require("path");
 const cloudinary = require("cloudinary").v2;
 
-// Konfigurasi Cloudinary
+// Cloudinary Configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -14,15 +14,15 @@ const uploadImage = (file) => {
       return resolve(null);
     }
 
-    // Validasi ekstensi file
+    // Validate file extension
     const allowedExtensions = [".png", ".jpg", ".jpeg"];
     const fileExtension = path.extname(file.originalname).toLowerCase();
     if (!allowedExtensions.includes(fileExtension)) {
       return reject(new Error("Invalid file type. Only .png, .jpg, and .jpeg are allowed."));
     }
 
-    // Validasi ukuran file (maksimal 500KB)
-    const maxSize = 500 * 1024; // 500KB in bytes
+    // Validate file size (max 500KB)
+    const maxSize = 500 * 1024;
     if (file.size > maxSize) {
       return reject(new Error(`File size is ${(file.size / 1024).toFixed(2)}KB, exceeding the 500KB limit.`));
     }
@@ -38,7 +38,8 @@ const uploadImage = (file) => {
         if (error) {
           return reject(new Error("Failed to upload file to Cloudinary. Please try again."));
         }
-        resolve(result.secure_url); // Secure URL for storage in the database
+        // Return both secure URL and public_id
+        resolve({ url: result.secure_url, public_id: result.public_id });
       }
     );
 

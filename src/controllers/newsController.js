@@ -100,23 +100,33 @@ const deleteNews = async (req, res) => {
     const { id } = req.params;
     const news = await News.findByPk(id);
 
-    if (!news) return res.status(404).json({ message: `News with ID ${id} not found` });
-
-    // Delete image from Cloudinary if it exists
-    if (news.imagePublicId) {
-      await cloudinary.uploader.destroy(news.imagePublicId, (error, result) => {
-        if (error) {
-          console.error("Failed to delete image from Cloudinary:", error);
-        } else {
-          console.log("Image deleted from Cloudinary:", result);
-        }
-      });
+    if (!news) {
+      return res.status(404).json({ message: `News with ID ${id} not found` });
     }
 
-    // Delete news record from database
+    // Ensure `imagePublicId` exists and attempt to delete the image
+    if (news.imagePublicId) {
+      const publicId = news.imagePublicId;
+
+      // Attempt to delete the image on Cloudinary
+      const cloudinaryResponse = await cloudinary.uploader.destroy(publicId);
+
+      // Check Cloudinary response to confirm deletion
+      if (cloudinaryResponse.result !== "ok") {
+        console.error("Failed to delete image from Cloudinary:", cloudinaryResponse);
+        return res.status(500).json({ message: "Failed to delete image from Cloudinary." });
+      }
+
+      console.log("Image successfully deleted from Cloudinary:", cloudinaryResponse);
+    } else {
+      console.log("No imagePublicId found; skipping Cloudinary deletion.");
+    }
+
+    // Delete the news item from the database
     await news.destroy();
-    res.status(200).json({ message: "News successfully deleted" });
+    res.status(200).json({ message: "News successfully deleted, including associated image from Cloudinary" });
   } catch (error) {
+    console.error("Error deleting news:", error);
     res.status(500).json({ message: "Error deleting news" });
   }
 };

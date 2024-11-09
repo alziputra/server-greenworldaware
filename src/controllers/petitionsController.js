@@ -1,4 +1,6 @@
 const { Petitions, Signatures, User } = require("../models");
+const cloudinary = require("cloudinary").v2;
+const { uploadImage } = require("../utils/cloudinaryUploadHelper");
 
 const getAllPetition = async (req, res) => {
   try {
@@ -6,7 +8,7 @@ const getAllPetition = async (req, res) => {
       include: [
         {
           model: Signatures,
-          require: true,
+          required: true,
         },
       ],
     });
@@ -24,34 +26,21 @@ const getAllPetition = async (req, res) => {
 const getPetitionById = async (req, res) => {
   try {
     const id = req.params.id;
-    const getPetition = await Petitions.findOne({
-      where: { id: id },
+    const petition = await Petitions.findOne({
+      where: { id },
       include: [
-        {
-          model: Signatures,
-          require: true,
-        },
-        {
-          model: User,
-          require: true,
-        },
+        { model: Signatures, required: true },
+        { model: User, required: true },
       ],
     });
 
-    if (!getPetition) {
-      res.status(404).json({
-        message: "Petition not found",
-      });
+    if (!petition) {
+      return res.status(404).json({ message: "Petition not found" });
     }
 
-    res.status(200).json({
-      message: "succeed",
-      data: getPetition,
-    });
+    res.status(200).json({ message: "succeed", data: petition });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -61,46 +50,24 @@ const addPetition = async (req, res) => {
     const user = await User.findOne({ where: { id: data.userId } });
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      return res.status(404).json({ message: "User not found" });
     }
+
+    // Upload image if provided
+    const imageUploadResult = req.file ? await uploadImage(req.file) : null;
 
     const newPetition = {
       userId: data.userId,
       title: data.title,
       description: data.description,
-      image: data.image,
+      image: imageUploadResult ? imageUploadResult.url : null,
+      imagePublicId: imageUploadResult ? imageUploadResult.public_id : null,
     };
     const addNewPetition = await Petitions.create(newPetition);
 
-    res.status(201).json({
-      message: "Post has been added succesfully",
-      data: addNewPetition,
-    });
+    res.status(201).json({ message: "Petition has been added successfully", data: addNewPetition });
   } catch (error) {
-    res.send(error.message);
-  }
-};
-
-const deletePetition = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const findPetition = await Petitions.findOne({ where: { id: id } });
-    const deletePetitionById = await findPetition.destroy({ where: { id: id } });
-
-    if (!deletePetitionById) {
-      return res.status(404).json({
-        message: "Petition with " + id + " not found",
-      });
-    }
-
-    res.status(200).json({
-      message: "Petition has been succesfully deleted",
-      data: deletePetitionById,
-    });
-  } catch (error) {
-    res.send("ID not found");
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -108,25 +75,65 @@ const editPetition = async (req, res) => {
   try {
     const id = req.params.id;
     const data = req.body;
-    const petition = await Petitions.findOne({ where: { id: id } });
+    const petition = await Petitions.findOne({ where: { id } });
 
-    const editedPetition = {
+    if (!petition) {
+      return res.status(404).json({ message: "Petition not found" });
+    }
+
+    // Upload new image if provided, and delete old image if exists
+    let imageUploadResult;
+    if (req.file) {
+      if (petition.imagePublicId) {
+        await cloudinary.uploader.destroy(petition.imagePublicId);
+      }
+      imageUploadResult = await uploadImage(req.file);
+    }
+
+    const updatedPetition = {
       userId: data.userId,
       title: data.title,
       description: data.description,
-      image: data.image,
+      image: imageUploadResult ? imageUploadResult.url : petition.image,
+      imagePublicId: imageUploadResult ? imageUploadResult.public_id : petition.imagePublicId,
     };
-    const edited = await petition.update(editedPetition, { where: { id: id } });
+    const editedPetition = await petition.update(updatedPetition);
 
-    res.status(201).json({
-      message: "Petition has succesfully made a change",
-      data: edited,
-    });
+    res.status(200).json({ message: "Petition has been updated successfully", data: editedPetition });
   } catch (error) {
-    res.status(500).json({
-      message: "Internal Error",
-    });
+    res.status(500).json({ message: "Internal Error" });
   }
 };
 
-module.exports = { getAllPetition, getPetitionById, addPetition, editPetition, deletePetition };
+const deletePetition = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const petition = await Petitions.findOne({ where: { id } });
+
+    if (!petition) {
+      return res.status(404).json({ message: `Petition with ID ${id} not found` });
+    }
+
+    // Delete image from Cloudinary if exists
+    if (petition.imagePublicId) {
+      const cloudinaryResponse = await cloudinary.uploader.destroy(petition.imagePublicId);
+      if (cloudinaryResponse.result !== "ok") {
+        console.error("Failed to delete image from Cloudinary:", cloudinaryResponse);
+        return res.status(500).json({ message: "Failed to delete image from Cloudinary." });
+      }
+    }
+
+    await petition.destroy();
+    res.status(200).json({ message: "Petition has been successfully deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting petition" });
+  }
+};
+
+module.exports = {
+  getAllPetition,
+  getPetitionById,
+  addPetition,
+  editPetition,
+  deletePetition,
+};

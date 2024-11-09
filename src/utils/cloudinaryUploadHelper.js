@@ -1,4 +1,3 @@
-//src/utils/imageUploadHelper.js
 const path = require("path");
 const cloudinary = require("cloudinary").v2;
 
@@ -25,26 +24,26 @@ const uploadImage = (file) => {
     // Validasi ukuran file (maksimal 500KB)
     const maxSize = 500 * 1024; // 500KB in bytes
     if (file.size > maxSize) {
-      return reject(new Error(`File size is ${file.size / 1024}KB, exceeding the 500KB limit.`));
+      return reject(new Error(`File size is ${(file.size / 1024).toFixed(2)}KB, exceeding the 500KB limit.`));
     }
 
-    // Unggah file ke Cloudinary
-    cloudinary.uploader
-      .upload_stream(
-        {
-          folder: "uploads", // Tentukan folder di Cloudinary
-          public_id: `${Date.now()}_${file.originalname}`,
-          resource_type: "image",
-        },
-        (error, result) => {
-          if (error) {
-            reject(new Error("Failed to upload file to Cloudinary. Please try again."));
-          } else {
-            resolve(result.secure_url); // URL aman untuk disimpan di database
-          }
+    // Upload file to Cloudinary
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "uploads", // Specify the folder on Cloudinary
+        public_id: `${Date.now()}_${file.originalname}`,
+        resource_type: "image",
+      },
+      (error, result) => {
+        if (error) {
+          return reject(new Error("Failed to upload file to Cloudinary. Please try again."));
         }
-      )
-      .end(file.buffer); // Kirim buffer file ke Cloudinary
+        resolve(result.secure_url); // Secure URL for storage in the database
+      }
+    );
+
+    // Stream the file buffer to Cloudinary
+    uploadStream.end(file.buffer);
   });
 };
 

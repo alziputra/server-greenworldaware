@@ -1,75 +1,47 @@
 const { News, Categories, User } = require("../models");
-const { uploadImage } = require("../utils/imageUploadHelper");
+const { uploadImage } = require("../utils/cloudinaryUploadHelper");
 
 const getAllNews = async (req, res) => {
   try {
     const allNews = await News.findAll({
       include: [
-        {
-          model: User,
-          required: false, // Ubah ke false untuk membuat relasi opsional
-        },
-        {
-          model: Categories,
-          required: false, // Ubah ke false untuk membuat relasi opsional
-        },
+        { model: User, required: false },
+        { model: Categories, required: false },
       ],
     });
-    res.status(200).json({
-      message: "succeed",
-      data: allNews,
-    });
+    res.status(200).json({ message: "Succeed", data: allNews });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
 const getNewsById = async (req, res) => {
   try {
     const { id } = req.params;
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid news ID" });
 
-    // Pastikan ID adalah angka
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid news ID" });
-    }
-
-    const getNews = await News.findOne({
+    const news = await News.findOne({
       where: { id },
       include: [
-        { model: User, required: false }, // ubah ke false jika user bisa null
-        { model: Categories, required: false }, // ubah ke false jika categories bisa null
+        { model: User, required: false },
+        { model: Categories, required: false },
       ],
     });
 
-    if (!getNews) {
-      return res.status(404).json({ message: "News not found" });
-    }
-
-    res.status(200).json({
-      message: "succeed",
-      data: getNews,
-    });
+    if (!news) return res.status(404).json({ message: "News not found" });
+    res.status(200).json({ message: "Succeed", data: news });
   } catch (error) {
-    res.status(500).json({
-      message: `Error fetching news: ${error.message}`,
-    });
+    res.status(500).json({ message: `Error fetching news: ${error.message}` });
   }
 };
 
 const addNews = async (req, res) => {
   try {
     const data = req.body;
-    const user = await User.findOne({ where: { id: data.userId } });
+    const user = await User.findByPk(data.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Upload the image if it exists
     const imagePath = req.file ? await uploadImage(req.file) : null;
-
     const newNews = {
       title: data.title,
       description: data.description,
@@ -77,72 +49,49 @@ const addNews = async (req, res) => {
       userId: data.userId,
       categoryId: data.categoryId,
     };
-    const addNewNews = await News.create(newNews);
+    const addedNews = await News.create(newNews);
 
-    res.status(201).json({
-      message: "News has been added successfully",
-      data: addNewNews,
-    });
+    res.status(201).json({ message: "News has been added successfully", data: addedNews });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
 const editNews = async (req, res) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
     const data = req.body;
-    const news = await News.findOne({ where: { id } });
+    const news = await News.findByPk(id);
 
-    if (!news) {
-      return res.status(404).json({ message: `News with id ${id} not found` });
-    }
+    if (!news) return res.status(404).json({ message: `News with ID ${id} not found` });
 
-    // Upload the image if provided, otherwise keep the existing image
     const imagePath = req.file ? await uploadImage(req.file) : news.image;
-
-    const editedNews = {
+    const updatedNews = {
       title: data.title,
       description: data.description,
       image: imagePath,
       userId: data.userId,
       categoryId: data.categoryId,
     };
-    const edited = await news.update(editedNews);
+    const editedNews = await news.update(updatedNews);
 
-    res.status(200).json({
-      message: "News has successfully been updated",
-      data: edited,
-    });
+    res.status(200).json({ message: "News successfully updated", data: editedNews });
   } catch (error) {
-    res.status(500).json({
-      message: "Internal Error",
-    });
+    res.status(500).json({ message: "Internal error" });
   }
 };
 
 const deleteNews = async (req, res) => {
   try {
-    const id = req.params.id;
-    const findNews = await News.findOne({ where: { id } });
+    const { id } = req.params;
+    const news = await News.findByPk(id);
 
-    if (!findNews) {
-      return res.status(404).json({
-        message: `News with id ${id} not found`,
-      });
-    }
+    if (!news) return res.status(404).json({ message: `News with ID ${id} not found` });
 
-    await findNews.destroy();
-
-    res.status(200).json({
-      message: "News has been successfully deleted",
-    });
+    await news.destroy();
+    res.status(200).json({ message: "News successfully deleted" });
   } catch (error) {
-    res.status(500).json({
-      message: "An error occurred while deleting the news",
-    });
+    res.status(500).json({ message: "Error deleting news" });
   }
 };
 

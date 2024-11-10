@@ -10,11 +10,11 @@ const getAllUser = async (req, res) => {
       include: [
         {
           model: Likes,
-          required: true,
+          required: false,
         },
         {
           model: Comments,
-          required: true,
+          required: false,
         },
       ],
     });

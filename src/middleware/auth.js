@@ -1,22 +1,26 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 const auth = (req, res, next) => {
-  const auth = req.headers.authorization;
+  const authHeader = req.headers.authorization;
 
-  if (!auth?.startsWith('Bearer')) {
+  // Check for a valid "Bearer" token format in the header
+  if (!authHeader || !authHeader.toLowerCase().startsWith("bearer ")) {
     return res.status(403).json({
-      message: 'You need to specify the auth',
+      message: "Authorization header missing or invalid format",
     });
   }
 
-  const jwtToken = auth.split(' ')?.[1];
+  const jwtToken = authHeader.split(" ")[1];
 
   jwt.verify(jwtToken, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
+      console.error("Token verification failed:", err.message); // Log for debugging
       return res.status(403).json({
-        message: 'Wrong Credentials',
+        message: "Invalid token",
       });
     }
+
+    // Attach decoded credentials to request
     req.credentials = decoded;
     next();
   });

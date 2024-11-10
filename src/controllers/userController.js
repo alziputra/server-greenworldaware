@@ -1,8 +1,9 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { Comments, Likes, User, Post } = require("../models");
+const { uploadImage } = require("../utils/cloudinaryUploadHelper");
 
-// Get all users with their likes and comments
+// Get all users with their likes and comments (restricted to super admin)
 const getAllUser = async (req, res) => {
   try {
     const allUsers = await User.findAll({
@@ -134,9 +135,9 @@ const register = async (req, res) => {
     const { firstName, lastName, email, password, gender, role } = req.body;
 
     // Validate required fields
-    if (!firstName || !lastName || !email || !password || !gender || !role) {
+    if (!firstName || !lastName || !email || !password || !gender) {
       return res.status(400).json({
-        message: "All fields are required: firstName, lastName, email, password, gender, role",
+        message: "All fields are required: firstName, lastName, email, password, gender",
       });
     }
 
@@ -154,7 +155,7 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       gender,
-      role,
+      role: "user", // Role default to 'user'
     });
 
     res.status(201).json({
@@ -169,33 +170,50 @@ const register = async (req, res) => {
   }
 };
 
-// Edit a specific user
+// Edit user profile (restricted to the user themself or super admin)
 const editUser = async (req, res) => {
   try {
     const id = req.params.id;
-    const { firstName, lastName, email, password, image, gender, role } = req.body;
+    const { firstName, lastName, email, password, gender } = req.body;
+    const requesterId = req.credentials.id;
+    const requesterRole = req.credentials.role;
 
+    // Allow user to edit their own profile or super admin to edit any profile
+    if (requesterRole !== "super admin" && requesterId != id) {
+      return res.status(403).json({ message: "You are not authorized to edit this user's data" });
+    }
+
+    // Find the user by ID
     const user = await User.findByPk(id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const hashPassword = password ? await bcrypt.hash(password, 10) : user.password;
+    // Hash the new password if provided
+    const updatedPassword = password ? await bcrypt.hash(password, 10) : user.password;
 
-    const editedUser = {
-      firstName,
-      lastName,
-      email,
-      password: hashPassword,
-      image,
-      gender,
-      role,
+    // Handle profile image upload if a new image is provided
+    let imageUrl = user.image;
+    if (req.file) {
+      const uploadResult = await uploadImage(req.file);
+      imageUrl = uploadResult.url;
+    }
+
+    // Only allow updating of specific fields
+    const updatedData = {
+      firstName: firstName || user.firstName,
+      lastName: lastName || user.lastName,
+      email: email || user.email,
+      password: updatedPassword,
+      image: imageUrl,
+      gender: gender || user.gender,
     };
 
-    const updatedUser = await user.update(editedUser);
+    // Update the user
+    const updatedUser = await user.update(updatedData);
 
     res.status(200).json({
-      message: "User successfully updated",
+      message: "User profile successfully updated",
       data: updatedUser,
     });
   } catch (error) {

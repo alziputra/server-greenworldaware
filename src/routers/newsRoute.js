@@ -13,4 +13,3 @@ route.put("/:id", auth, upload.single("image"), editNews);
 route.delete("/:id", auth, deleteNews);
 
 module.exports = route;
-  

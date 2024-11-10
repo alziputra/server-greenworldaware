@@ -1,7 +1,7 @@
 const express = require("express");
-
 const auth = require("../middleware/auth");
 const { getAllComments, getCommentById, addComment, deleteComment, editComment, getCommentByPostId } = require("../controllers/commentController");
+
 const route = express.Router();
 
 route.get("/", getAllComments);

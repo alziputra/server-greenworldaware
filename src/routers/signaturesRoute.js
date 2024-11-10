@@ -1,5 +1,4 @@
 const express = require("express");
-
 const auth = require("../middleware/auth");
 const { getAllSignature, addSignature, deleteSignature, getSignatureById } = require("../controllers/signatureController");
 

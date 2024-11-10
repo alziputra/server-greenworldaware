@@ -4,7 +4,7 @@ const multer = require("multer");
 const { getAllPetition, getPetitionById, addPetition, editPetition, deletePetition } = require("../controllers/petitionsController");
 
 const route = express.Router();
-const upload = multer({ storage: multer.memoryStorage() }); // Store file in memory
+const upload = multer({ storage: multer.memoryStorage() });
 
 route.get("/", getAllPetition);
 route.get("/:id", getPetitionById);

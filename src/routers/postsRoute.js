@@ -1,13 +1,17 @@
 const express = require("express");
+const multer = require("multer");
 const { getAllPost, getPostById, deletePost, addPost, editPost } = require("../controllers/postController");
 const auth = require("../middleware/auth");
 
 const router = express.Router();
+const upload = multer();
 
 router.get("/", getAllPost);
 router.get("/:id", getPostById);
-router.post("/", auth, addPost); // otentikasi semua user dapat menambahkan post
-router.put("/:id", auth, editPost); // otentikasi semua user dapat mengedit post
-router.delete("/:id", auth, deletePost); // otentikasi semua user dapat menghapus post
+
+// Otentikasi semua user dapat menambahkan, mengedit, dan menghapus post
+router.post("/", auth, upload.single("image"), addPost); 
+router.put("/:id", auth, editPost);
+router.delete("/:id", auth, deletePost);
 
 module.exports = router;

@@ -7,9 +7,9 @@ const route = express.Router();
 const upload = multer(); // Configure multer for handling form-data
 
 // Rute untuk melihat konten pengguna terbuka (tidak memerlukan autentikasi)
-route.get("/", getAllUser); // Semua orang bisa melihat daftar pengguna
-route.get("/:id", getUserById); // Semua orang bisa melihat profil pengguna tertentu
-route.get("/:id/posts", getPostById); // Semua orang bisa melihat postingan pengguna tertentu
+route.get("/", getAllUser); 
+route.get("/:id", getUserById); 
+route.get("/:id/posts", getPostById); 
 
 // Rute untuk register dan login pengguna
 route.post("/register", upload.none(), register);

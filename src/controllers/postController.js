@@ -1,4 +1,5 @@
 const { Likes, User, Post, Comments } = require("../models");
+const { uploadImage } = require("../utils/cloudinaryUploadHelper");
 
 const getAllPost = async (req, res) => {
   try {
@@ -45,34 +46,32 @@ const getPostById = async (req, res) => {
 
 const addPost = async (req, res) => {
   try {
-    const data = req.body;
-    const decodedUserId = req.credentials.id; // Ambil userId dari decoded token
+    const decodedUserId = req.credentials.id; // Ambil userId dari decoded token jwt
+    const { post } = req.body; // Dapatkan text fields dari req.body
+    let imageUrl = null;
 
-    // Cek apakah userId di dalam body request sama dengan decoded userId
-    if (data.userId != decodedUserId) {
-      return res.status(403).json({ message: "Unauthorized: userId does not match token" });
+    // Cek apakah ada file yang diupload
+    if (req.file) {
+      // Upload gambar ke Cloudinary yang sudah kita siapkan
+      const imageUploadResult = await uploadImage(req.file);
+      imageUrl = imageUploadResult.url; // Store the image URL
     }
 
-    const user = await User.findOne({ where: { id: data.userId } });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const newPost = {
-      post: data.post,
-      image: data.image,
-      userId: data.userId,
-    };
-
-    const addNewPost = await Post.create(newPost);
+    // Buat post baru
+    const newPost = await Post.create({
+      post,
+      image: imageUrl,
+      userId: decodedUserId,
+    });
 
     // Update user points
-    const updatedUserPoints = user.points + 10;
-    await User.update({ points: updatedUserPoints }, { where: { id: data.userId } });
+    const user = await User.findByPk(decodedUserId);
+    const updatedUserPoints = (user.points || 0) + 10;
+    await user.update({ points: updatedUserPoints });
 
     return res.status(201).json({
       message: "Post and points have been added successfully",
-      data: addNewPost,
+      data: newPost,
       points_updated: updatedUserPoints,
     });
   } catch (error) {

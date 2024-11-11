@@ -39,10 +39,18 @@ const getNewsById = async (req, res) => {
 const addNews = async (req, res) => {
   try {
     const data = req.body;
+    // Ambil data user dari token yang telah di-decode
+    const decodedUserId = req.credentials.id;
+
+    // Cek apakah userId di request body sama dengan userId yang di-decode
+    if (data.userId != decodedUserId) {
+      return res.status(403).json({ message: "Unauthorized: userId does not match token" });
+    }
+
     const user = await User.findByPk(data.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Upload image if provided and get URL and public_id
+    // Upload gambar jika ada dan dapatkan URL dan public_id
     const imageUploadResult = req.file ? await uploadImage(req.file) : null;
 
     const newNews = {
@@ -53,6 +61,7 @@ const addNews = async (req, res) => {
       userId: data.userId,
       categoryId: data.categoryId,
     };
+
     const addedNews = await News.create(newNews);
 
     res.status(201).json({ message: "News has been added successfully", data: addedNews });

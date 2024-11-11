@@ -46,8 +46,14 @@ const getPostById = async (req, res) => {
 const addPost = async (req, res) => {
   try {
     const data = req.body;
-    const user = await User.findOne({ where: { id: data.userId } });
+    const decodedUserId = req.credentials.id; // Ambil userId dari decoded token
 
+    // Cek apakah userId di dalam body request sama dengan decoded userId
+    if (data.userId != decodedUserId) {
+      return res.status(403).json({ message: "Unauthorized: userId does not match token" });
+    }
+
+    const user = await User.findOne({ where: { id: data.userId } });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -57,13 +63,15 @@ const addPost = async (req, res) => {
       image: data.image,
       userId: data.userId,
     };
+
     const addNewPost = await Post.create(newPost);
 
+    // Update user points
     const updatedUserPoints = user.points + 10;
     await User.update({ points: updatedUserPoints }, { where: { id: data.userId } });
 
     return res.status(201).json({
-      message: "Post and points has been added successfully",
+      message: "Post and points have been added successfully",
       data: addNewPost,
       points_updated: updatedUserPoints,
     });

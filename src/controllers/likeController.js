@@ -17,26 +17,31 @@ const getAllLikes = async (req, res) => {
 const addLikes = async (req, res) => {
   try {
     const data = req.body;
-    const post = await Post.findOne({ where: { id: data.postId } });
+    const decodedUserId = req.credentials.id; // Ambil userId dari decoded token
 
+    // Cek apakah userId di dalam body request sama dengan decoded userId
+    if (data.userId != decodedUserId) {
+      return res.status(403).json({ message: "Unauthorized: userId does not match token" });
+    }
+
+    const post = await Post.findOne({ where: { id: data.postId } });
     if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
-      });
+      return res.status(404).json({ message: "Post not found" });
     }
 
     const newLike = {
       postId: data.postId,
       userId: data.userId,
     };
+
     const addNewLike = await Likes.create(newLike);
 
-    res.status(201).json({
-      message: "Like has been added succesfully",
+    return res.status(201).json({
+      message: "Like has been added successfully",
       data: addNewLike,
     });
   } catch (error) {
-    res.send(error.message);
+    return res.status(500).json({ message: error.message });
   }
 };
 

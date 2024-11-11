@@ -72,12 +72,16 @@ const getCommentByPostId = async (req, res) => {
 const addComment = async (req, res) => {
   try {
     const data = req.body;
-    const post = await Post.findOne({ where: { id: data.postId } });
+    const decodedUserId = req.credentials.id; // Get userId from decoded token
 
+    // Cek apakah userId di dalam body request sama dengan decoded userId
+    if (data.userId != decodedUserId) {
+      return res.status(403).json({ message: "Unauthorized: userId does not match token" });
+    }
+
+    const post = await Post.findOne({ where: { id: data.postId } });
     if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
-      });
+      return res.status(404).json({ message: "Post not found" });
     }
 
     const newComment = {
@@ -85,14 +89,15 @@ const addComment = async (req, res) => {
       userId: data.userId,
       comment: data.comment,
     };
+
     const addNewComment = await Comments.create(newComment);
 
-    res.status(201).json({
-      message: "Comment has been added succesfully",
+    return res.status(201).json({
+      message: "Comment has been added successfully",
       data: addNewComment,
     });
   } catch (error) {
-    res.send(error.message);
+    return res.status(500).json({ message: error.message });
   }
 };
 

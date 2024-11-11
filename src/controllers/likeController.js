@@ -16,31 +16,42 @@ const getAllLikes = async (req, res) => {
 
 const addLikes = async (req, res) => {
   try {
-    const data = req.body;
-    const decodedUserId = req.credentials.id; // Ambil userId dari decoded token
+    const decodedUserId = req.credentials.id; // Get userId from decoded token
+    const { postId } = req.body; // Extract postId from the request body
 
-    // Cek apakah userId di dalam body request sama dengan decoded userId
-    if (data.userId != decodedUserId) {
-      return res.status(403).json({ message: "Unauthorized: userId does not match token" });
+    // Debug logs to confirm values
+    console.log("Decoded userId:", decodedUserId);
+    console.log("Request Body postId:", postId);
+
+    // Validate postId and decodedUserId
+    if (!postId) {
+      return res.status(400).json({ message: "postId is required" });
+    }
+    if (!decodedUserId) {
+      return res.status(400).json({ message: "User ID is not available from token" });
     }
 
-    const post = await Post.findOne({ where: { id: data.postId } });
+    // Check if the post exists
+    const post = await Post.findOne({ where: { id: postId } });
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    const newLike = {
-      postId: data.postId,
-      userId: data.userId,
-    };
+    // Check if the user has already liked the post to avoid duplicate likes
+    const existingLike = await Likes.findOne({ where: { postId, userId: decodedUserId } });
+    if (existingLike) {
+      return res.status(400).json({ message: "You already liked this post" });
+    }
 
-    const addNewLike = await Likes.create(newLike);
+    // Create the new like entry
+    const newLike = await Likes.create({ postId, userId: decodedUserId });
 
     return res.status(201).json({
       message: "Like has been added successfully",
-      data: addNewLike,
+      data: newLike,
     });
   } catch (error) {
+    console.error("Error in addLikes:", error.message);
     return res.status(500).json({ message: error.message });
   }
 };
@@ -48,21 +59,16 @@ const addLikes = async (req, res) => {
 const deleteLike = async (req, res) => {
   try {
     const id = req.params.id;
-    const findLike = await Likes.findOne({ where: { id: id } });
-    const deleteLikeById = await findLike.destroy({ where: { id: id } });
+    const findLike = await Likes.findOne({ where: { id } });
 
     if (!findLike) {
-      return res.status(404).json({
-        message: "Like with " + id + " not found",
-      });
+      return res.status(404).json({ message: `Like with id ${id} not found` });
     }
 
-    res.status(200).json({
-      message: "Like has been succesfully deleted",
-      data: deleteLikeById,
-    });
+    await findLike.destroy();
+    res.status(200).json({ message: "Like has been successfully deleted" });
   } catch (error) {
-    res.send("ID not found");
+    res.status(500).json({ message: "ID not found" });
   }
 };
 

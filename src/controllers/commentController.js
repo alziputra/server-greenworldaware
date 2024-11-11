@@ -43,24 +43,24 @@ const getCommentById = async (req, res) => {
 
 const getCommentByPostId = async (req, res) => {
   try {
-    const id = req.params.id;
-    const getComment = await Comments.findAll({
-      where: { postId: id },
+    const postId = req.params.postId; // Get postId from URL parameters
+    const comments = await Comments.findAll({
+      where: { postId },
       include: {
         model: User,
-        require: true,
+        required: true,
       },
     });
 
-    if (!getComment) {
-      res.status(404).json({
-        message: "comment not found",
+    if (!comments.length) {
+      return res.status(404).json({
+        message: "No comments found for this post",
       });
     }
 
     res.status(200).json({
       message: "succeed",
-      data: getComment,
+      data: comments,
     });
   } catch (error) {
     res.status(500).json({
@@ -71,32 +71,41 @@ const getCommentByPostId = async (req, res) => {
 
 const addComment = async (req, res) => {
   try {
-    const data = req.body;
-    const decodedUserId = req.credentials.id; // Get userId from decoded token
+    const decodedUserId = req.credentials.id; // Get userId from decoded JWT
+    const { postId, comment } = req.body; // Extract postId and comment from the request body
 
-    // Cek apakah userId di dalam body request sama dengan decoded userId
-    if (data.userId != decodedUserId) {
-      return res.status(403).json({ message: "Unauthorized: userId does not match token" });
+    // Debug logs to confirm values
+    console.log("Decoded userId:", decodedUserId);
+    console.log("Request Body postId:", postId);
+    console.log("Request Body comment:", comment);
+
+    // Validate postId and comment
+    if (!postId) {
+      return res.status(400).json({ message: "postId is required" });
+    }
+    if (!comment) {
+      return res.status(400).json({ message: "comment is required" });
     }
 
-    const post = await Post.findOne({ where: { id: data.postId } });
+    // Check if the post exists
+    const post = await Post.findOne({ where: { id: postId } });
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    const newComment = {
-      postId: data.postId,
-      userId: data.userId,
-      comment: data.comment,
-    };
-
-    const addNewComment = await Comments.create(newComment);
+    // Create the new comment entry
+    const newComment = await Comments.create({
+      postId,
+      userId: decodedUserId,
+      comment,
+    });
 
     return res.status(201).json({
       message: "Comment has been added successfully",
-      data: addNewComment,
+      data: newComment,
     });
   } catch (error) {
+    console.error("Error in addComment:", error.message);
     return res.status(500).json({ message: error.message });
   }
 };

@@ -5,8 +5,8 @@ const getAllPost = async (req, res) => {
   try {
     const allPosts = await Post.findAll({
       include: [
-        { model: Likes, required: true },
-        { model: Comments, required: true },
+        { model: Likes, required: false },
+        { model: Comments, required: false },
         { model: User, required: true },
       ],
     });
@@ -79,23 +79,6 @@ const addPost = async (req, res) => {
   }
 };
 
-const deletePost = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const findPost = await Post.findOne({ where: { id: id } });
-
-    if (!findPost) {
-      return res.status(404).json({ message: `Post with id ${id} not found` });
-    }
-
-    await findPost.destroy();
-
-    return res.status(200).json({ message: "Post has been successfully deleted" });
-  } catch (error) {
-    return res.status(500).json({ message: "ID not found" });
-  }
-};
-
 const editPost = async (req, res) => {
   try {
     const id = req.params.id;
@@ -121,6 +104,23 @@ const editPost = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ message: "Internal Error" });
+  }
+};
+
+const deletePost = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const findPost = await Post.findOne({ where: { id: id } });
+
+    if (!findPost) {
+      return res.status(404).json({ message: `Post with id ${id} not found` });
+    }
+
+    await findPost.destroy();
+
+    return res.status(200).json({ message: "Post has been successfully deleted" });
+  } catch (error) {
+    return res.status(500).json({ message: "ID not found" });
   }
 };
 

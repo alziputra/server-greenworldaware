@@ -38,33 +38,41 @@ const getNewsById = async (req, res) => {
 
 const addNews = async (req, res) => {
   try {
-    const data = req.body;
-    // Ambil data user dari token yang telah di-decode
-    const decodedUserId = req.credentials.id;
+    const decodedUserId = req.credentials.id; // Get userId from decoded JWT
+    const decodedRole = req.credentials.role; // Get user role from decoded JWT
 
-    // Cek apakah userId di request body sama dengan userId yang di-decode
-    if (data.userId != decodedUserId) {
-      return res.status(403).json({ message: "Unauthorized: userId does not match token" });
+    // Check if the user has a "user" role, deny access if so
+    if (decodedRole === "user") {
+      return res.status(403).json({
+        message: "Unauthorized: Users with 'user' role cannot add news",
+      });
     }
 
-    const user = await User.findByPk(data.userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const { title, description, categoryId } = req.body; // Get other fields from the body
+    let imageUrl = null;
+    let imagePublicId = null;
 
-    // Upload gambar jika ada dan dapatkan URL dan public_id
-    const imageUploadResult = req.file ? await uploadImage(req.file) : null;
+    // Check if an image file was uploaded
+    if (req.file) {
+      const imageUploadResult = await uploadImage(req.file);
+      imageUrl = imageUploadResult.url;
+      imagePublicId = imageUploadResult.public_id;
+    }
 
-    const newNews = {
-      title: data.title,
-      description: data.description,
-      image: imageUploadResult ? imageUploadResult.url : null,
-      imagePublicId: imageUploadResult ? imageUploadResult.public_id : null, // Store public_id
-      userId: data.userId,
-      categoryId: data.categoryId,
-    };
+    // Create a new news entry
+    const newNews = await News.create({
+      title,
+      description,
+      image: imageUrl,
+      imagePublicId,
+      userId: decodedUserId, // Use the userId from the decoded token
+      categoryId,
+    });
 
-    const addedNews = await News.create(newNews);
-
-    res.status(201).json({ message: "News has been added successfully", data: addedNews });
+    res.status(201).json({
+      message: "News has been added successfully",
+      data: newNews,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -46,25 +46,25 @@ const getPostById = async (req, res) => {
 
 const addPost = async (req, res) => {
   try {
-    const decodedUserId = req.credentials.id; // Ambil userId dari decoded token jwt
-    const { post } = req.body; // Dapatkan text fields dari req.body
+    const decodedUserId = req.credentials.id;
+    const { post } = req.body;
     let imageUrl = null;
 
-    // Cek apakah ada file yang diupload
     if (req.file) {
-      // Upload gambar ke Cloudinary yang sudah kita siapkan
+      console.log("File received:", req.file);
       const imageUploadResult = await uploadImage(req.file);
-      imageUrl = imageUploadResult.url; // Store the image URL
+      console.log("Upload result:", imageUploadResult);
+      imageUrl = imageUploadResult.url;
+    } else {
+      console.log("No file uploaded");
     }
 
-    // Buat post baru
     const newPost = await Post.create({
       post,
       image: imageUrl,
       userId: decodedUserId,
     });
 
-    // Update user points
     const user = await User.findByPk(decodedUserId);
     const updatedUserPoints = (user.points || 0) + 10;
     await user.update({ points: updatedUserPoints });
@@ -75,6 +75,7 @@ const addPost = async (req, res) => {
       points_updated: updatedUserPoints,
     });
   } catch (error) {
+    console.error("Error adding post:", error);
     return res.status(500).json({ message: error.message });
   }
 };
